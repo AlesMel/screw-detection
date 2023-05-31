@@ -1,0 +1,5 @@
+train: client/dataset/images/train
+test: client/dataset/images/test
+val: client/dataset/images/val
+nc: 9  # number of classes
+names: ['type_001', 'type_002', 'type_003', 'type_004', 'type_005', 'type_006', 'type_007', 'type_008', 'type_009']
