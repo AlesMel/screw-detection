@@ -1,6 +1,7 @@
 import pickle
 import socket
 import struct
+import snap7
 
 import numpy as np
 import tkinter as tk
@@ -21,6 +22,7 @@ class WebcamApp:
         self.window.config(bg="#3B4252")
         self.x = 655
         self.y = 535
+        self.frame_counter = 0
 
         # Properties
         self.server_ip = "127.0.0.1"
@@ -38,6 +40,12 @@ class WebcamApp:
         self.pipeline_profile = None
         self.device = None
         self.device_product_line = None
+
+        # PLC
+        self.plc = snap7.client.Client()
+        self.plc_ip = "10.7.14.118"
+        self.plc_connected = False
+        self.plc_data_byte = None
 
         # Video
         self.canvas = tk.Label(
@@ -155,9 +163,32 @@ class WebcamApp:
         self.realsense_btn.place(x=self.x, y=355)
         self.realsense_btn.config(bg="#d08770")
 
+        # PLC Buttnon
+        self.plc_button = tk.Button(
+            text="PLC Connect",
+            command=self.connect_to_plc,
+            width=12,
+            bd=0,
+            fg="white",
+            highlightthickness=0,
+            relief="flat",
+            anchor="center",
+            justify="center",
+        )
+        self.plc_button.place(x=self.x, y=385)
+        self.plc_button.config(bg="#d08770")
+
         self.update_frame()
 
         self.window.mainloop()
+
+    def close_app(self):
+        if self.socket is not None:
+            self.socket.close()
+        if self.realsense:
+            self.pipeline.stop()
+        self.video_capture.release()
+        self.window.destroy()
 
     def update_frame(self):
         if self.realsense:
@@ -173,10 +204,17 @@ class WebcamApp:
 
         self.window.after(self.framerate, self.update_frame)
 
-        if self.sock_connected and self.detect:
+        if (self.frame_counter % 5 == 0) and (self.sock_connected) and self.detect:
             self.send_frame()
-            # msg = self.socket.recvmsg(1024)
-            # print(msg)
+            pred_class = int.from_bytes(self.socket.recv(1024), byteorder="little")
+            print(pred_class)
+            if self.plc_connected:
+                self.null_db()
+                snap7.util.set_byte(self.plc_data_byte, pred_class, 128)
+                self.plc.db_write(100, 0, self.plc_data_byte)
+            # print(int.from_bytes(msg, byteorder="big"))
+
+        self.frame_counter += 1
 
     def ip_onclick(self, event):
         self.ip_entry.delete(0, tk.END)
@@ -254,6 +292,16 @@ class WebcamApp:
         else:
             print("Enter full server information")
 
+    def connect_to_plc(self, *args):
+        try:
+            self.plc.connect(self.plc_ip, 0, 1)
+        except:
+            print("Could not connect to PLC!")
+        else:
+            print("Succesfully connected to PLC!")
+            self.plc_connected = True
+            self.plc_data_byte = self.plc.db_read(100, 0, 9)
+
     def send_frame(self, *args):
         if self.sock_connected:
             # img = cv2.cvtColor(self.snapshot_img, cv2.COLOR_BGR2GRAY)
@@ -267,11 +315,11 @@ class WebcamApp:
 
     def snapshot(self, *args):
         image_dir = "D:\\FEI-STU\\TP\\network\\client\\dataset"
-        image_files = [f for f in os.listdir(image_dir) if f.endswith('.png')]
+        image_files = [f for f in os.listdir(image_dir) if f.endswith(".png")]
 
         highest_num = 0
         for image_file in image_files:
-            num=int(image_file[7:-4])
+            num = int(image_file[7:-4])
             if num > highest_num:
                 highest_num = num
         next_num = highest_num + 1
@@ -279,15 +327,13 @@ class WebcamApp:
         next_filepath = os.path.join(image_dir, next_filename)
         frame = cv2.cvtColor(self.snapshot_img, cv2.COLOR_BGR2RGB)
 
-        cv2.imwrite(next_filepath, frame)     
+        cv2.imwrite(next_filepath, frame)
 
-    def close_app(self):
-        if self.socket is not None:
-            self.socket.close()
-        if self.realsense:
-            self.pipeline.stop()
-        self.video_capture.release()
-        self.window.destroy()
+    def null_db(self, *args):
+        for i in range(0, 9):
+            snap7.util.set_byte(self.plc_data_byte, i, 0)
+
+        # self.plc.db_write(100, 0, self.plc_data_byte)
 
 
 if __name__ == "__main__":
