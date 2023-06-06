@@ -100,24 +100,27 @@ def main():
         if len(data) != data_size:
             print("Error: Incomplete data received")
         else:
-            received = pickle.loads(data)
-            if args.detect:
-                results = model.predict(received, imgsz=640, conf=0.5)
-                res_plotted = results[0].plot()
-                res_plotted = cv2.cvtColor(res_plotted, cv2.COLOR_BGR2RGB) 
-                # cv2.imshow("result", res_plotted)
-                # client_socket.sendall(b"niceru\n")
+            try:
+                received = pickle.loads(data)
+                if args.detect:
+                    results = model.predict(received, imgsz=640, conf=0.5)
+                    res_plotted = results[0].plot()
+                    res_plotted = cv2.cvtColor(res_plotted, cv2.COLOR_BGR2RGB)
+                    cv2.imshow("result", res_plotted)
+                    client_socket.sendall(b"niceru\n")
 
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    cv2.destroyAllWindows()
-                    server_socket.close()
-                    break
-            elif args.classify:
-                result = model.predict(np.expand_dims(received, axis=0), verbose=0)
-                predicted_class = np.argmax(result, axis=1)
-                print(predicted_class)
-                client_socket.sendall(predicted_class[0])
-                # confidence = np.max(predictions)
+                    if cv2.waitKey(1) & 0xFF == ord("q"):
+                        cv2.destroyAllWindows()
+                        server_socket.close()
+                        break
+                elif args.classify:
+                    result = model.predict(np.expand_dims(received, axis=0), verbose=0)
+                    predicted_class = np.argmax(result, axis=1)
+                    print(predicted_class)
+                    client_socket.sendall(predicted_class[0])
+                    # confidence = np.max(predictions)
+            except Exception as error:
+                print("Error occured: " + error.with_traceback)
 
 
 if __name__ == "__main__":
