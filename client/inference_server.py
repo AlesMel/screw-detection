@@ -6,8 +6,23 @@ import struct
 import argparse
 import numpy as np
 import tensorflow as tf
+import torch
+from PIL import Image
+
+from torchvision.transforms import Compose, Resize, ToTensor
 
 from ultralytics import YOLO
+
+def recvall(sock, count):
+    buf = b''
+    while count:
+        newbuf = sock.recv(count)
+        if not newbuf: 
+            return None
+        buf += newbuf
+        count -= len(newbuf)
+    return buf
+
 
 BUF_SIZE = 4096
 
@@ -24,10 +39,14 @@ group.add_argument("--classify", action="store_true", help="Option B description
 # Parse the command-line arguments
 args = parser.parse_args()
 
+
 # Check which option was chosen
 if args.detect:
     print("Using YOLO detection")
-    model = YOLO("yolov8n.pt")
+    model = YOLO("best.pt")
+    # model = torch.hub.load('client/yolov5', 'custom', path='client/yolov5/best.pt', source='local')
+    # model.to(device)
+    # model.eval()
 
 elif args.classify:
     print("Using CNN classification")
@@ -48,12 +67,28 @@ def main():
     server_socket.bind((host, port))
     server_socket.listen()
     print(f"[*] Listening on {host}:{port}")
+    client_socket, client_address = None, None
 
-    client_socket, client_address = server_socket.accept()
+    while client_socket is None:
+        try:
+            client_socket, client_address = server_socket.accept()
+        except Exception as e:
+            print(f"Failed to establish connection: {e}")
+            continue
+
+    print(f"Client has connected: {client_address}")
+    
     while True:
-        data_size_bytes = client_socket.recv(4)
-        data_size = struct.unpack("!I", data_size_bytes)[0]
-
+        # client_socket, client_address = server_socket.accept()
+        # data_size_bytes = client_socket.recv(4)
+        # data_size = struct.unpack("!I", data_size_bytes)[0]
+        data_size_bytes = recvall(client_socket, 4)
+        if data_size_bytes is not None:
+            data_size = struct.unpack("!I", data_size_bytes)[0]
+        else:
+            print("No data received. Connection may have been closed.")
+            break
+        
         data = b""
         while len(data) < data_size:
             remaining_data = data_size - len(data)
@@ -69,7 +104,8 @@ def main():
             if args.detect:
                 results = model.predict(received, imgsz=640, conf=0.5)
                 res_plotted = results[0].plot()
-                cv2.imshow("result", res_plotted)
+                res_plotted = cv2.cvtColor(res_plotted, cv2.COLOR_BGR2RGB) 
+                # cv2.imshow("result", res_plotted)
                 # client_socket.sendall(b"niceru\n")
 
                 if cv2.waitKey(1) & 0xFF == ord("q"):

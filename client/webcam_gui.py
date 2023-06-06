@@ -84,7 +84,7 @@ class WebcamApp:
         )
         self.port_entry.pack()
         self.port_entry.place(x=self.x, y=self.y + 30)
-        self.port_entry.insert(0, "6969")
+        self.port_entry.insert(0, "6666")
         self.port_entry.bind("<FocusOut>", self.get_port)
         self.port_entry.bind("<Button-1>", self.port_onclick)
 
