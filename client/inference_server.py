@@ -108,7 +108,16 @@ def main():
                     res_plotted = cv2.cvtColor(res_plotted, cv2.COLOR_BGR2RGB)
                     cv2.imshow("result", res_plotted)
                     client_socket.sendall(b"niceru\n")
-
+                    
+                    print ("NAMES\n") 
+                    dat = results[0].boxes.data
+                    labels = dat[:,-1].numpy().astype(np.uint8)
+                    print(f"Labels {labels}\n")                   
+                    if len(labels) > 0:
+                        hist, bins = np.histogram(labels, bins=max(labels)+1, range=(0, max(labels)+1))
+                        print("Bins:", bins)
+                        print("Counts:", hist)
+                    
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         cv2.destroyAllWindows()
                         server_socket.close()
