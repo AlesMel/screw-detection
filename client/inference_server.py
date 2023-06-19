@@ -38,6 +38,16 @@ else:
     sys.exit()
 
 
+def create_hist(labels):
+    label_arr = np.zeros(8)
+    for label in labels:
+        try:
+            label_arr[label] += 1
+        except IndexError:
+            print("Label index err")
+    return label_arr
+
+
 def main():
     # Configuration
     host = "127.0.0.1"
@@ -66,22 +76,20 @@ def main():
             print("Error: Incomplete data received")
         else:
             received = pickle.loads(data)
+
             if args.detect:
                 results = model.predict(received, imgsz=640, conf=0.5)
                 dat = results[0].boxes.data
                 labels = dat[:, -1].numpy().astype(np.uint8)
                 print(f"Labels {labels}\n")
                 if len(labels) > 0:
-                    hist, bins = np.histogram(
-                        labels, bins=max(labels) + 1, range=(0, max(labels) + 1)
-                    )
-                    print("Bins:", bins)
-                    print("Counts:", hist)
+                    hist = create_hist(labels)
                 else:
                     hist = np.zeros(8)
 
                 client_socket.sendall(hist.astype(np.uint8))
                 res_plotted = results[0].plot()
+                res_plotted = cv2.cvtColor(res_plotted, cv2.COLOR_RGB2BGR)
                 cv2.imshow("result", res_plotted)
 
                 if cv2.waitKey(1) & 0xFF == ord("q"):

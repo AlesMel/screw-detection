@@ -218,6 +218,13 @@ class WebcamApp:
             #     self.plc.db_write(100, 0, self.plc_data_byte)
             # print(int.from_bytes(msg, byteorder="big"))
 
+            if self.plc_connected:
+                self.null_db()
+                for i in range(0, 8):
+                    snap7.util.set_byte(self.plc_data_byte, i, data[i])
+
+                self.plc.db_write(100, 0, self.plc_data_byte)
+
         self.frame_counter += 1
 
     def ip_onclick(self, event):
