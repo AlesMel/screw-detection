@@ -206,12 +206,16 @@ class WebcamApp:
 
         if (self.frame_counter % 5 == 0) and (self.sock_connected) and self.detect:
             self.send_frame()
-            pred_class = int.from_bytes(self.socket.recv(1024), byteorder="little")
-            print(pred_class)
-            if self.plc_connected:
-                self.null_db()
-                snap7.util.set_byte(self.plc_data_byte, pred_class, 128)
-                self.plc.db_write(100, 0, self.plc_data_byte)
+            # pred_class = int.from_bytes(self.socket.recv(1024), byteorder="little")
+            data = self.socket.recv(256)
+            print(f"[RAW]: {data}")
+            print(f"[CON]: {[d for d in data]}")
+
+            # print(pred_class)
+            # if self.plc_connected:
+            #     self.null_db()
+            #     snap7.util.set_byte(self.plc_data_byte, pred_class, 128)
+            #     self.plc.db_write(100, 0, self.plc_data_byte)
             # print(int.from_bytes(msg, byteorder="big"))
 
         self.frame_counter += 1

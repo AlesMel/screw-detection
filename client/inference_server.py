@@ -1,5 +1,6 @@
 import sys
 import cv2
+import time
 import socket
 import pickle
 import struct
@@ -13,11 +14,12 @@ from torchvision.transforms import Compose, Resize, ToTensor
 
 from ultralytics import YOLO
 
+
 def recvall(sock, count):
-    buf = b''
+    buf = b""
     while count:
         newbuf = sock.recv(count)
-        if not newbuf: 
+        if not newbuf:
             return None
         buf += newbuf
         count -= len(newbuf)
@@ -77,7 +79,7 @@ def main():
             continue
 
     print(f"Client has connected: {client_address}")
-    
+
     while True:
         # client_socket, client_address = server_socket.accept()
         # data_size_bytes = client_socket.recv(4)
@@ -88,7 +90,7 @@ def main():
         else:
             print("No data received. Connection may have been closed.")
             break
-        
+
         data = b""
         while len(data) < data_size:
             remaining_data = data_size - len(data)
@@ -106,22 +108,19 @@ def main():
                     results = model.predict(received, imgsz=640, conf=0.5)
                     res_plotted = results[0].plot()
                     res_plotted = cv2.cvtColor(res_plotted, cv2.COLOR_BGR2RGB)
-                    cv2.imshow("result", res_plotted)
-                    client_socket.sendall(b"niceru\n")
-                    
-                    print ("NAMES\n") 
+
+                    print("NAMES\n")
                     dat = results[0].boxes.data
-                    labels = dat[:,-1].numpy().astype(np.uint8)
-                    print(f"Labels {labels}\n")                   
+                    labels = dat[:, -1].numpy().astype(np.uint8)
+                    print(f"Labels {labels}\n")
                     if len(labels) > 0:
-                        hist, bins = np.histogram(labels, bins=max(labels)+1, range=(0, max(labels)+1))
+                        hist, bins = np.histogram(
+                            labels, bins=max(labels) + 1, range=(0, max(labels) + 1)
+                        )
                         print("Bins:", bins)
                         print("Counts:", hist)
-                    
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
-                        cv2.destroyAllWindows()
-                        server_socket.close()
-                        break
+                        client_socket.sendall(hist.astype(np.uint8))
+
                 elif args.classify:
                     result = model.predict(np.expand_dims(received, axis=0), verbose=0)
                     predicted_class = np.argmax(result, axis=1)
@@ -134,4 +133,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
